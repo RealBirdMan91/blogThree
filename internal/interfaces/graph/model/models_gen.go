@@ -6,10 +6,20 @@ import (
 	"time"
 )
 
+type AuthPayload struct {
+	User        *User  `json:"user"`
+	AccessToken string `json:"accessToken"`
+}
+
 type Mutation struct {
 }
 
 type Query struct {
+}
+
+type SignInInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type SignUpInput struct {

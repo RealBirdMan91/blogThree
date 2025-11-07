@@ -19,6 +19,18 @@ input SignUpInput {
   password: String!
 }
 
+input SignInInput {
+  email: String!
+  password: String!
+}
+
+type AuthPayload {
+  user: User!
+  accessToken: String!
+}
+
 type Mutation {
   signUp(input: SignUpInput!): User!
+  signIn(input: SignInInput!): AuthPayload!
+  refreshToken: AuthPayload!
 }

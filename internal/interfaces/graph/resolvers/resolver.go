@@ -1,6 +1,7 @@
 package resolvers
 
 import (
+	authApp "blogThree/internal/auth/app"
 	userApp "blogThree/internal/user/app"
 )
 
@@ -11,4 +12,5 @@ import (
 
 type Resolver struct {
 	UserSvc userApp.UserService
+	AuthSvc authApp.AuthService
 }

@@ -7,9 +7,21 @@ package resolvers
 import (
 	"blogThree/internal/interfaces/graph"
 	"blogThree/internal/interfaces/graph/model"
+	"blogThree/internal/interfaces/httpctx"
+	"blogThree/internal/user/domain"
 	"context"
 	"fmt"
+	"net/http"
 )
+
+func toUserModel(u *domain.User) *model.User {
+	return &model.User{
+		ID:        u.ID().String(),
+		Email:     u.Email().String(),
+		CreatedAt: u.CreatedAt(),
+		UpdatedAt: u.UpdatedAt(),
+	}
+}
 
 // SignUp is the resolver for the signUp field.
 func (r *mutationResolver) SignUp(ctx context.Context, input model.SignUpInput) (*model.User, error) {
@@ -17,11 +29,75 @@ func (r *mutationResolver) SignUp(ctx context.Context, input model.SignUpInput) 
 	if err != nil {
 		return nil, err
 	}
-	return &model.User{
-		ID:        user.ID().String(),
-		Email:     user.Email().String(),
-		CreatedAt: user.CreatedAt(),
-		UpdatedAt: user.UpdatedAt(),
+	return toUserModel(user), nil
+}
+
+// SignIn is the resolver for the signIn field.
+func (r *mutationResolver) SignIn(ctx context.Context, input model.SignInInput) (*model.AuthPayload, error) {
+	user, err := r.UserSvc.SignIn(ctx, input.Email, input.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens, err := r.AuthSvc.GenerateForUser(ctx, user.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	if w, ok := httpctx.ResponseWriter(ctx); ok {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    tokens.RefreshToken,
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			Path:     "/",
+		})
+	}
+
+	return &model.AuthPayload{
+		User:        toUserModel(user),
+		AccessToken: tokens.AccessToken.Value,
+	}, nil
+
+}
+
+// RefreshToken is the resolver for the refreshToken field.
+func (r *mutationResolver) RefreshToken(ctx context.Context) (*model.AuthPayload, error) {
+	req, ok := httpctx.Request(ctx)
+	if !ok {
+		return nil, fmt.Errorf("no request in context")
+	}
+
+	c, err := req.Cookie("refresh_token")
+	if err != nil || c.Value == "" {
+		return nil, fmt.Errorf("no refresh token")
+	}
+
+	tokens, userID, err := r.AuthSvc.Refresh(ctx, c.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := r.UserSvc.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if w, ok := httpctx.ResponseWriter(ctx); ok {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    tokens.RefreshToken,
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			Path:     "/",
+		})
+	}
+
+	return &model.AuthPayload{
+		User:        toUserModel(user),
+		AccessToken: tokens.AccessToken.Value,
 	}, nil
 }
 

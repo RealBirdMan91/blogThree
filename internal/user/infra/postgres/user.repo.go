@@ -6,6 +6,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type PostgresUserRepo struct{ db *sql.DB }
@@ -39,4 +42,91 @@ func (r *PostgresUserRepo) ExistsByEmail(ctx context.Context, email domain.Email
 		return false, nil
 	}
 	return err == nil, err
+}
+
+func (r *PostgresUserRepo) GetByEmail(ctx context.Context, email domain.Email) (*domain.User, error) {
+	const q = `
+		SELECT id, email, password_hash, created_at, updated_at
+		FROM users
+		WHERE lower(email) = lower($1)
+		LIMIT 1
+	`
+
+	var (
+		id        uuid.UUID
+		emailStr  string
+		hashStr   string
+		createdAt time.Time
+		updatedAt time.Time
+	)
+
+	err := r.db.QueryRowContext(ctx, q, email.String()).
+		Scan(&id, &emailStr, &hashStr, &createdAt, &updatedAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, app.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	emailVO, err := domain.NewEmail(emailStr)
+	if err != nil {
+		return nil, err
+	}
+
+	hashVO, err := domain.NewPasswordHash(hashStr)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := domain.RehydrateUser(id, emailVO, hashVO, createdAt, updatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (r *PostgresUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	const q = `
+		SELECT id, email, password_hash, created_at, updated_at
+		FROM users
+		WHERE id = $1
+		LIMIT 1
+	`
+
+	var (
+		emailStr  string
+		hashStr   string
+		createdAt time.Time
+		updatedAt time.Time
+	)
+
+	err := r.db.QueryRowContext(ctx, q, id).
+		Scan(&id, &emailStr, &hashStr, &createdAt, &updatedAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, app.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	emailVO, err := domain.NewEmail(emailStr)
+	if err != nil {
+		return nil, err
+	}
+
+	hashVO, err := domain.NewPasswordHash(hashStr)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := domain.RehydrateUser(id, emailVO, hashVO, createdAt, updatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

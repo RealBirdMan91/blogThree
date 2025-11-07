@@ -3,6 +3,7 @@ package main
 import (
 	"blogThree/internal/interfaces/graph"
 	"blogThree/internal/interfaces/graph/resolvers"
+	"blogThree/internal/interfaces/httpctx"
 	db "blogThree/internal/platform/postgres"
 	"blogThree/internal/platform/postgres/migrations"
 	"log"
@@ -22,6 +23,10 @@ import (
 	userPolicies "blogThree/internal/user/app/policies"
 	userPostgres "blogThree/internal/user/infra/postgres"
 	userSecurity "blogThree/internal/user/infra/security"
+
+	authApp "blogThree/internal/auth/app"
+	jwt "blogThree/internal/auth/infra/jwt"
+	authPostgres "blogThree/internal/auth/infra/postgres"
 )
 
 func mustGetEnv() (string, string) {
@@ -58,8 +63,17 @@ func main() {
 	hasher := userSecurity.NewBcryptHasher(bcrypt.DefaultCost)
 	userService := userApp.NewService(userRepo, policy, hasher)
 
+	//AUTH
+	authRepo := authPostgres.NewRefreshTokenRepo(pgDB)
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
+	encoder := jwt.New([]byte(jwtSecret))
+	authService := authApp.NewService(authRepo, encoder)
+
 	//ROOT RESOLVER INITIALIZATION
-	res := &resolvers.Resolver{UserSvc: userService}
+	res := &resolvers.Resolver{UserSvc: userService, AuthSvc: authService}
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: res}))
 
@@ -75,7 +89,7 @@ func main() {
 	})
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	http.Handle("/query", httpctx.Inject(srv))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))

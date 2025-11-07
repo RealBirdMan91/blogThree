@@ -4,10 +4,14 @@ import (
 	"blogThree/internal/user/domain"
 	"context"
 	"errors"
+
+	"github.com/google/uuid"
 )
 
 var (
 	ErrEmailAlreadyExists = errors.New("email already in use")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserNotFound       = errors.New("user not found")
 )
 
 type Service struct {
@@ -18,6 +22,8 @@ type Service struct {
 
 type UserService interface {
 	SignUp(ctx context.Context, email, rawPassword string) (*domain.User, error)
+	SignIn(ctx context.Context, email, rawPassword string) (*domain.User, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 }
 
 func NewService(r UserRepository, policy PasswordPolicy, h PasswordHasher) UserService {
@@ -26,6 +32,27 @@ func NewService(r UserRepository, policy PasswordPolicy, h PasswordHasher) UserS
 		policy: policy,
 		hasher: h,
 	}
+}
+
+func (s *Service) SignIn(ctx context.Context, email, rawPassword string) (*domain.User, error) {
+	emailVO, err := domain.NewEmail(email)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	user, err := s.repo.GetByEmail(ctx, emailVO)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	if err := s.hasher.Compare(user.PasswordHash().String(), rawPassword); err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	return user, nil
 }
 
 func (s *Service) SignUp(ctx context.Context, email, rawPassword string) (*domain.User, error) {
@@ -65,4 +92,8 @@ func (s *Service) SignUp(ctx context.Context, email, rawPassword string) (*domai
 	}
 
 	return user, nil
+}
+
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	return s.repo.GetByID(ctx, id)
 }
