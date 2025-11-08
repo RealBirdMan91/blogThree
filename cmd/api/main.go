@@ -1,6 +1,7 @@
 package main
 
 import (
+	"blogThree/internal/interfaces/authctx"
 	"blogThree/internal/interfaces/graph"
 	"blogThree/internal/interfaces/graph/resolvers"
 	"blogThree/internal/interfaces/httpctx"
@@ -89,7 +90,13 @@ func main() {
 	})
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", httpctx.Inject(srv))
+	http.Handle("/query",
+		httpctx.Inject( // Request+Response in den Context legen (für Cookies etc.)
+			authctx.Middleware(encoder)( // Access-Token aus Authorization prüfen, UserID in Context
+				srv,
+			),
+		),
+	)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))

@@ -16,4 +16,5 @@ type RefreshTokenRepository interface {
 
 type AccessTokenEncoder interface {
 	Generate(userID uuid.UUID, ttl time.Duration) (value string, expiresAt time.Time, err error)
+	Verify(token string) (userID uuid.UUID, err error)
 }
