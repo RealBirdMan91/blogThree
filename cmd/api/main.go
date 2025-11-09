@@ -74,9 +74,16 @@ func main() {
 	authService := authApp.NewService(authRepo, encoder)
 
 	//ROOT RESOLVER INITIALIZATION
-	res := &resolvers.Resolver{UserSvc: userService, AuthSvc: authService}
+	res := &resolvers.Resolver{
+		UserSvc: userService,
+		AuthSvc: authService,
+	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: res}))
+	cfg := graph.Config{
+		Resolvers: res,
+	}
+	cfg.Directives.Auth = res.Auth
+	srv := handler.New(graph.NewExecutableSchema(cfg))
 
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})

@@ -24,6 +24,7 @@ type UserService interface {
 	SignUp(ctx context.Context, email, rawPassword string) (*domain.User, error)
 	SignIn(ctx context.Context, email, rawPassword string) (*domain.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	ListUsers(ctx context.Context) ([]*domain.User, error)
 }
 
 func NewService(r UserRepository, policy PasswordPolicy, h PasswordHasher) UserService {
@@ -96,4 +97,8 @@ func (s *Service) SignUp(ctx context.Context, email, rawPassword string) (*domai
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	return s.repo.GetByID(ctx, id)
+}
+
+func (s *Service) ListUsers(ctx context.Context) ([]*domain.User, error) {
+	return s.repo.List(ctx)
 }

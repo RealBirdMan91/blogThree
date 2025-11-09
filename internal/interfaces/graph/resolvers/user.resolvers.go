@@ -8,20 +8,10 @@ import (
 	"blogThree/internal/interfaces/graph"
 	"blogThree/internal/interfaces/graph/model"
 	"blogThree/internal/interfaces/httpctx"
-	"blogThree/internal/user/domain"
 	"context"
 	"fmt"
 	"net/http"
 )
-
-func toUserModel(u *domain.User) *model.User {
-	return &model.User{
-		ID:        u.ID().String(),
-		Email:     u.Email().String(),
-		CreatedAt: u.CreatedAt(),
-		UpdatedAt: u.UpdatedAt(),
-	}
-}
 
 // SignUp is the resolver for the signUp field.
 func (r *mutationResolver) SignUp(ctx context.Context, input model.SignUpInput) (*model.User, error) {
@@ -59,7 +49,6 @@ func (r *mutationResolver) SignIn(ctx context.Context, input model.SignInInput) 
 		User:        toUserModel(user),
 		AccessToken: tokens.AccessToken.Value,
 	}, nil
-
 }
 
 // RefreshToken is the resolver for the refreshToken field.
@@ -103,7 +92,17 @@ func (r *mutationResolver) RefreshToken(ctx context.Context) (*model.AuthPayload
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
+	dbUsers, err := r.UserSvc.ListUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*model.User, 0, len(dbUsers))
+	for _, u := range dbUsers {
+		users = append(users, toUserModel(u))
+	}
+
+	return users, nil
 }
 
 // Mutation returns graph.MutationResolver implementation.

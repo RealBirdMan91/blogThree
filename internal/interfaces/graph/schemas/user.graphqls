@@ -2,6 +2,7 @@
 #
 # https://gqlgen.com/getting-started/
 scalar DateTime
+directive @auth on FIELD_DEFINITION
 
 type User {
   id: ID!
@@ -11,7 +12,7 @@ type User {
 }
 
 type Query {
-  users: [User!]!
+  users: [User!]! @auth
 }
 
 input SignUpInput {

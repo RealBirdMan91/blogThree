@@ -45,6 +45,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	Auth func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 }
 
 type ComplexityRoot struct {
@@ -594,7 +595,20 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 		func(ctx context.Context) (any, error) {
 			return ec.resolvers.Query().Users(ctx)
 		},
-		nil,
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.Auth == nil {
+					var zeroVal []*model.User
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
 		ec.marshalNUser2ᚕᚖblogThreeᚋinternalᚋinterfacesᚋgraphᚋmodelᚐUserᚄ,
 		true,
 		true,

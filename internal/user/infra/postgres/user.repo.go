@@ -130,3 +130,56 @@ func (r *PostgresUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.U
 
 	return user, nil
 }
+
+func (r *PostgresUserRepo) List(ctx context.Context) ([]*domain.User, error) {
+	const q = `
+		SELECT id, email, password_hash, created_at, updated_at
+		FROM users
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+
+	for rows.Next() {
+		var (
+			id        uuid.UUID
+			emailStr  string
+			hashStr   string
+			createdAt time.Time
+			updatedAt time.Time
+		)
+
+		if err := rows.Scan(&id, &emailStr, &hashStr, &createdAt, &updatedAt); err != nil {
+			return nil, err
+		}
+
+		emailVO, err := domain.NewEmail(emailStr)
+		if err != nil {
+			return nil, err
+		}
+
+		hashVO, err := domain.NewPasswordHash(hashStr)
+		if err != nil {
+			return nil, err
+		}
+
+		u, err := domain.RehydrateUser(id, emailVO, hashVO, createdAt, updatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
