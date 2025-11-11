@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // SignUp is the resolver for the signUp field.
@@ -49,6 +50,42 @@ func (r *mutationResolver) SignIn(ctx context.Context, input model.SignInInput) 
 		User:        toUserModel(user),
 		AccessToken: tokens.AccessToken.Value,
 	}, nil
+}
+
+// SignOut is the resolver for the signOut field.
+func (r *mutationResolver) SignOut(ctx context.Context) (bool, error) {
+	// 1) Request aus Context holen
+	req, ok := httpctx.Request(ctx)
+	if !ok {
+		// Sollte eigentlich nie passieren, wenn httpctx.Inject korrekt gesetzt ist
+		return false, fmt.Errorf("no request in context")
+	}
+
+	// 2) Refresh-Cookie lesen
+	c, err := req.Cookie("refresh_token")
+	if err == nil && c.Value != "" {
+		// Versuchen, den Refresh-Token zu revoken.
+		// Fehler hier bewusst nicht nach außen leaken -> idempotent & sicher.
+		_ = r.AuthSvc.Revoke(ctx, c.Value)
+	}
+
+	// 3) Cookie beim Client löschen (auch wenn es oben fehlte -> idempotent)
+	if w, ok := httpctx.ResponseWriter(ctx); ok {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   -1,
+			Expires:  time.Unix(0, 0),
+		})
+	}
+
+	// 4) Immer true zurückgeben:
+	// SignOut ist "best effort" und idempotent.
+	return true, nil
 }
 
 // RefreshToken is the resolver for the refreshToken field.

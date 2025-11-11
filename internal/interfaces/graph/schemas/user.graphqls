@@ -33,5 +33,6 @@ type AuthPayload {
 type Mutation {
   signUp(input: SignUpInput!): User!
   signIn(input: SignInInput!): AuthPayload!
+  signOut: Boolean!
   refreshToken: AuthPayload!
 }
