@@ -1,17 +1,12 @@
 package app
 
 import (
+	apperr "blogThree/internal/errors"
 	"blogThree/internal/user/domain"
 	"context"
 	"errors"
 
 	"github.com/google/uuid"
-)
-
-var (
-	ErrEmailAlreadyExists = errors.New("email already in use")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotFound       = errors.New("user not found")
 )
 
 type Service struct {
@@ -59,7 +54,7 @@ func (s *Service) SignIn(ctx context.Context, email, rawPassword string) (*domai
 func (s *Service) SignUp(ctx context.Context, email, rawPassword string) (*domain.User, error) {
 	emailVO, err := domain.NewEmail(email)
 	if err != nil {
-		return nil, err
+		return nil, NewInvalidEmailError()
 	}
 
 	exists, err := s.repo.ExistsByEmail(ctx, emailVO)
@@ -71,21 +66,21 @@ func (s *Service) SignUp(ctx context.Context, email, rawPassword string) (*domai
 	}
 
 	if err := s.policy.Validate(rawPassword); err != nil {
-		return nil, err
+		return nil, NewWeakPasswordError(err.Error())
 	}
 
 	hashedPassword, err := s.hasher.Hash(rawPassword)
 	if err != nil {
-		return nil, err
+		return nil, NewPasswordHashFailed(err)
 	}
 	passwordHashVO, err := domain.NewPasswordHash(hashedPassword)
 	if err != nil {
-		return nil, err
+		return nil, NewPasswordHashFailed(err)
 	}
 
 	user, err := domain.NewUser(emailVO, passwordHashVO)
 	if err != nil {
-		return nil, err
+		return nil, apperr.Unknown(err)
 	}
 
 	if err := s.repo.CreateUser(ctx, user); err != nil {

@@ -16,7 +16,6 @@ type User struct {
 
 func NewUser(email Email, passwordHash PasswordHash) (*User, error) {
 	now := time.Now().UTC()
-
 	return &User{
 		id:        uuid.New(),
 		email:     email,
