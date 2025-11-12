@@ -83,7 +83,11 @@ func main() {
 		Resolvers: res,
 	}
 	cfg.Directives.Auth = res.Auth
+
 	srv := handler.New(graph.NewExecutableSchema(cfg))
+	// 👉 Hooks HIER registrieren:
+	srv.SetErrorPresenter(graph.ErrorPresenter)
+	srv.SetRecoverFunc(graph.RecoverFunc)
 
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
