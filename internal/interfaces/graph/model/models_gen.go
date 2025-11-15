@@ -11,7 +11,20 @@ type AuthPayload struct {
 	AccessToken string `json:"accessToken"`
 }
 
+type CreatePostInput struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
 type Mutation struct {
+}
+
+type Post struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Body      string    `json:"body"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Query struct {
@@ -30,6 +43,7 @@ type SignUpInput struct {
 type User struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
+	Posts     []*Post   `json:"posts"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	CreatedAt time.Time `json:"createdAt"`
 }

@@ -140,10 +140,6 @@ func (r *PostgresUserRepo) List(ctx context.Context) ([]*domain.User, error) {
 			return nil, app.NewUserListFailed(err)
 		}
 
-		if err := rows.Scan(&id, &emailStr, &hashStr, &createdAt, &updatedAt); err != nil {
-			return nil, app.NewUserListFailed(err)
-		}
-
 		u, err := r.hydrateUser(id, emailStr, hashStr, createdAt, updatedAt)
 		if err != nil {
 			return nil, app.NewUserListFailed(err)

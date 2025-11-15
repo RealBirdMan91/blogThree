@@ -3,10 +3,16 @@
 # https://gqlgen.com/getting-started/
 scalar DateTime
 directive @auth on FIELD_DEFINITION
+directive @goField(
+  forceResolver: Boolean
+  name: String
+) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 
 type User {
   id: ID!
   email: String!
+  posts(limit: Int = 20, offset: Int = 0): [Post!]!
+    @goField(forceResolver: true)
   updatedAt: DateTime!
   createdAt: DateTime!
 }

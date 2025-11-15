@@ -28,6 +28,10 @@ import (
 	authApp "blogThree/internal/auth/app"
 	jwt "blogThree/internal/auth/infra/jwt"
 	authPostgres "blogThree/internal/auth/infra/postgres"
+
+	contentApp "blogThree/internal/content/app"
+	contentPostgres "blogThree/internal/content/infra/postgres"
+	userReader "blogThree/internal/content/infra/postgres/userReader"
 )
 
 func mustGetEnv() (string, string) {
@@ -73,10 +77,17 @@ func main() {
 	encoder := jwt.New([]byte(jwtSecret))
 	authService := authApp.NewService(authRepo, encoder)
 
+	//CONTENT
+	// CONTENT
+	contentPostRepo := contentPostgres.NewPostgresPostRepo(pgDB)
+	contentUserReader := userReader.New(pgDB) // nutzt User-Tabelle direkt
+	contentSvc := contentApp.NewService(contentPostRepo, contentUserReader)
+
 	//ROOT RESOLVER INITIALIZATION
 	res := &resolvers.Resolver{
-		UserSvc: userService,
-		AuthSvc: authService,
+		UserSvc:    userService,
+		AuthSvc:    authService,
+		ContentSvc: contentSvc,
 	}
 
 	cfg := graph.Config{
