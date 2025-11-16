@@ -12,7 +12,8 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	UserSvc    userApp.UserService
-	AuthSvc    authApp.AuthService
-	ContentSvc contentApp.PostService
+	UserSvc       userApp.UserService
+	AuthSvc       authApp.AuthService
+	ContentCmdSvc contentApp.PostCommandService
+	ContentQrySvc contentApp.PostQueryService
 }

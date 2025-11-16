@@ -78,16 +78,17 @@ func main() {
 	authService := authApp.NewService(authRepo, encoder)
 
 	//CONTENT
-	// CONTENT
 	contentPostRepo := contentPostgres.NewPostgresPostRepo(pgDB)
 	contentUserReader := userReader.New(pgDB) // nutzt User-Tabelle direkt
-	contentSvc := contentApp.NewService(contentPostRepo, contentUserReader)
+	contentCmdSvc := contentApp.NewCommandService(contentPostRepo, contentUserReader)
+	contentQrySvc := contentApp.NewQueryService(contentPostRepo)
 
 	//ROOT RESOLVER INITIALIZATION
 	res := &resolvers.Resolver{
-		UserSvc:    userService,
-		AuthSvc:    authService,
-		ContentSvc: contentSvc,
+		UserSvc:       userService,
+		AuthSvc:       authService,
+		ContentCmdSvc: contentCmdSvc,
+		ContentQrySvc: contentQrySvc,
 	}
 
 	cfg := graph.Config{

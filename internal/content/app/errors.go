@@ -31,7 +31,7 @@ func NewInvalidTitleError(reason string) apperr.Error {
 	return apperr.Validation(CodeInvalidTitle, "invalid title", ext)
 }
 
-func NewInvalidBodyError() apperr.Error {
+func NewInvalidBodyError(reason string) apperr.Error {
 	return apperr.Validation(CodeInvalidBody, "invalid body", map[string]any{"field": "body"})
 }
 

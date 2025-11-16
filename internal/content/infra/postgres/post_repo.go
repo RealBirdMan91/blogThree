@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,8 +16,11 @@ type PostgresPostRepo struct{ db *sql.DB }
 
 func NewPostgresPostRepo(db *sql.DB) *PostgresPostRepo { return &PostgresPostRepo{db: db} }
 
-var _ app.PostRepository = (*PostgresPostRepo)(nil)
+// Implementiert beide Ports:
+var _ app.PostCommandRepository = (*PostgresPostRepo)(nil)
+var _ app.PostQueryRepository = (*PostgresPostRepo)(nil)
 
+// -------------------- COMMANDS --------------------
 func (r *PostgresPostRepo) Create(ctx context.Context, p *domain.Post) error {
 	const q = `
 		INSERT INTO posts (id, title, body, author_id, created_at, updated_at)
@@ -35,6 +39,8 @@ func (r *PostgresPostRepo) Create(ctx context.Context, p *domain.Post) error {
 	}
 	return nil
 }
+
+// -------------------- QUERIES --------------------
 
 func (r *PostgresPostRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Post, error) {
 	const q = `
@@ -60,17 +66,29 @@ func (r *PostgresPostRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.P
 	}
 
 	return r.hydratePost(postID, titleStr, bodyStr, authorID, createdAt, updatedAt)
-
 }
 
-func (r *PostgresPostRepo) List(ctx context.Context, limit, offset int) ([]*domain.Post, error) {
-	const q = `
+func (r *PostgresPostRepo) List(ctx context.Context, f app.PostListFilter) ([]*domain.Post, error) {
+	base := `
         SELECT id, title, body, author_id, created_at, updated_at
         FROM posts
-        ORDER BY created_at DESC
-        LIMIT $1 OFFSET $2
     `
-	rows, err := r.db.QueryContext(ctx, q, limit, offset)
+	where := ""
+	args := []any{}
+	i := 1
+
+	if f.AuthorID != nil {
+		where = fmt.Sprintf(" WHERE author_id = $%d", i)
+		args = append(args, *f.AuthorID)
+		i++
+	}
+
+	limitOffset := fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+	args = append(args, f.Limit, f.Offset)
+
+	q := base + where + limitOffset
+
+	rows, err := r.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, app.NewPostsListFailed(err)
 	}
@@ -88,48 +106,9 @@ func (r *PostgresPostRepo) List(ctx context.Context, limit, offset int) ([]*doma
 		)
 		if err := rows.Scan(&id, &titleStr, &bodyStr, &authorID, &createdAt, &updatedAt); err != nil {
 			return nil, app.NewPostsListFailed(err)
-		} 
+		}
+
 		p, err := r.hydratePost(id, titleStr, bodyStr, authorID, createdAt, updatedAt)
-		if err != nil {
-			return nil, app.NewPostsListFailed(err)
-		}
-		posts = append(posts, p)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, app.NewPostsListFailed(err)
-	}
-	return posts, nil
-}
-
-func (r *PostgresPostRepo) ListByAuthor(ctx context.Context, authorID uuid.UUID, limit, offset int) ([]*domain.Post, error) {
-	const q = `
-		SELECT id, title, body, author_id, created_at, updated_at
-		FROM posts
-		WHERE author_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3
-	`
-	rows, err := r.db.QueryContext(ctx, q, authorID, limit, offset)
-	if err != nil {
-		return nil, app.NewPostsListFailed(err) 
-	}
-	defer rows.Close()
-
-	var posts []*domain.Post
-	for rows.Next() {
-		var (
-			id        uuid.UUID
-			titleStr  string
-			bodyStr   string
-			aID       uuid.UUID
-			createdAt time.Time
-			updatedAt time.Time
-		)
-		if err := rows.Scan(&id, &titleStr, &bodyStr, &aID, &createdAt, &updatedAt); err != nil {
-			return nil, app.NewPostsListFailed(err)
-		}
-
-		p, err := r.hydratePost(id, titleStr, bodyStr, aID, createdAt, updatedAt)
 		if err != nil {
 			return nil, app.NewPostsListFailed(err)
 		}
