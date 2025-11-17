@@ -13,3 +13,11 @@ func toUserModel(u *domain.User) *model.User {
 		UpdatedAt: u.UpdatedAt(),
 	}
 }
+
+func toUserModelList(us []*domain.User) []*model.User {
+	out := make([]*model.User, 0, len(us))
+	for _, u := range us {
+		out = append(out, toUserModel(u))
+	}
+	return out
+}

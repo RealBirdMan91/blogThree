@@ -41,6 +41,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Mutation() MutationResolver
+	Post() PostResolver
 	Query() QueryResolver
 	User() UserResolver
 }
@@ -64,6 +65,8 @@ type ComplexityRoot struct {
 	}
 
 	Post struct {
+		Author    func(childComplexity int) int
+		AuthorID  func(childComplexity int) int
 		Body      func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
@@ -92,6 +95,9 @@ type MutationResolver interface {
 	SignOut(ctx context.Context) (bool, error)
 	RefreshToken(ctx context.Context) (*model.AuthPayload, error)
 	CreatePost(ctx context.Context, input model.CreatePostInput) (*model.Post, error)
+}
+type PostResolver interface {
+	Author(ctx context.Context, obj *model.Post) (*model.User, error)
 }
 type QueryResolver interface {
 	Users(ctx context.Context) ([]*model.User, error)
@@ -180,6 +186,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SignUp(childComplexity, args["input"].(model.SignUpInput)), true
 
+	case "Post.author":
+		if e.complexity.Post.Author == nil {
+			break
+		}
+
+		return e.complexity.Post.Author(childComplexity), true
+	case "Post.authorId":
+		if e.complexity.Post.AuthorID == nil {
+			break
+		}
+
+		return e.complexity.Post.AuthorID(childComplexity), true
 	case "Post.body":
 		if e.complexity.Post.Body == nil {
 			break
@@ -821,6 +839,10 @@ func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context
 				return ec.fieldContext_Post_title(ctx, field)
 			case "body":
 				return ec.fieldContext_Post_body(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
 			case "createdAt":
@@ -925,6 +947,76 @@ func (ec *executionContext) fieldContext_Post_body(_ context.Context, field grap
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Post_authorId(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Post_authorId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Post_authorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Post_author(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Post_author,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Post().Author(ctx, obj)
+		},
+		nil,
+		ec.marshalNUser2ᚖblogThreeᚋinternalᚋinterfacesᚋgraphᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Post_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "posts":
+				return ec.fieldContext_User_posts(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -1073,6 +1165,10 @@ func (ec *executionContext) fieldContext_Query_post(ctx context.Context, field g
 				return ec.fieldContext_Post_title(ctx, field)
 			case "body":
 				return ec.fieldContext_Post_body(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
 			case "createdAt":
@@ -1126,6 +1222,10 @@ func (ec *executionContext) fieldContext_Query_posts(ctx context.Context, field 
 				return ec.fieldContext_Post_title(ctx, field)
 			case "body":
 				return ec.fieldContext_Post_body(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
 			case "createdAt":
@@ -1345,6 +1445,10 @@ func (ec *executionContext) fieldContext_User_posts(ctx context.Context, field g
 				return ec.fieldContext_Post_title(ctx, field)
 			case "body":
 				return ec.fieldContext_Post_body(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
 			case "createdAt":
@@ -3116,27 +3220,68 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._Post_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "title":
 			out.Values[i] = ec._Post_title(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "body":
 			out.Values[i] = ec._Post_body(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "authorId":
+			out.Values[i] = ec._Post_authorId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "author":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_author(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "updatedAt":
 			out.Values[i] = ec._Post_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._Post_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))

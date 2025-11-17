@@ -23,6 +23,8 @@ type Post struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	Body      string    `json:"body"`
+	AuthorID  string    `json:"authorId"`
+	Author    *User     `json:"author"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	CreatedAt time.Time `json:"createdAt"`
 }

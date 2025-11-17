@@ -8,6 +8,7 @@ import (
 	contentApp "blogThree/internal/content/app"
 	apperr "blogThree/internal/errors"
 	"blogThree/internal/interfaces/authctx"
+	"blogThree/internal/interfaces/graph"
 	"blogThree/internal/interfaces/graph/model"
 	"context"
 
@@ -25,22 +26,36 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 	if err != nil {
 		return nil, err
 	}
+
 	return toPostModel(post), nil
+}
+
+// Author is the resolver for the author field.
+func (r *postResolver) Author(ctx context.Context, obj *model.Post) (*model.User, error) {
+	userID, err := uuid.Parse(obj.AuthorID)
+	if err != nil {
+		return nil, apperr.Validation("INVALID_AUTHOR_ID", "invalid author id", map[string]any{
+			"authorId": obj.AuthorID,
+		})
+	}
+
+	u, err := r.UserSvc.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return toUserModel(u), nil
 }
 
 // Post is the resolver for the post field.
 func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error) {
 	postID, err := uuid.Parse(id)
 	if err != nil {
-		// sauber als VALIDATION-Fehler ausgeben (geht durch den ErrorPresenter)
-		return nil, apperr.Validation("INVALID_POST_ID", "invalid post id", map[string]any{
-			"id": id,
-		})
+		return nil, apperr.Validation("INVALID_POST_ID", "invalid post id", map[string]any{"id": id})
 	}
 
 	p, err := r.ContentQrySvc.GetPost(ctx, postID)
 	if err != nil {
-		// Repo/Service liefern entweder DOMAIN (POST_NOT_FOUND) oder TECHNICAL – einfach durchreichen
 		return nil, err
 	}
 
@@ -49,30 +64,18 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error
 
 // Posts is the resolver for the posts field.
 func (r *queryResolver) Posts(ctx context.Context, limit *int32, offset *int32) ([]*model.Post, error) {
-	// Defaults (Service clamped ohnehin, aber so ist's explizit)
-	l := 20
-	if limit != nil {
-		l = int(*limit)
-	}
-	o := 0
-	if offset != nil {
-		o = int(*offset)
-	}
+	l, o := normalizePagination(limit, offset, 20, 100)
 
-	f := contentApp.PostListFilter{
-		Limit:  l,
-		Offset: o,
-		// AuthorID: nil => alle Posts
-	}
-
+	f := contentApp.PostListFilter{Limit: l, Offset: o}
 	posts, err := r.ContentQrySvc.ListPosts(ctx, f)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]*model.Post, 0, len(posts))
-	for _, p := range posts {
-		out = append(out, toPostModel(p))
-	}
-	return out, nil
+	return toPostModelList(posts), nil
 }
+
+// Post returns graph.PostResolver implementation.
+func (r *Resolver) Post() graph.PostResolver { return &postResolver{r} }
+
+type postResolver struct{ *Resolver }
